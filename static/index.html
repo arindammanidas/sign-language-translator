@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ASL Realtime Translator</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+
+<body>
+  <div class="container">
+    <header>
+      <h1>ASL Realtime Translator</h1>
+      <span id="status" class="status">Initialising</span>
+    </header>
+    <div class="video-wrapper">
+      <video id="camera" autoplay playsinline muted></video>
+      <div class="overlay">
+        <p id="prediction" class="prediction">…</p>
+        <span id="confidence" class="confidence">Waiting for frames</span>
+      </div>
+    </div>
+    <div class="controls">
+      <button id="speak-toggle" type="button">🔇 Voice captions off</button>
+      <div class="instructions">
+        Allow camera access and sign in frame. Prediction text updates in real time. Toggle voice captions to hear spoken output.
+      </div>
+    </div>
+  </div>
+  <script src="/static/app.js" type="module"></script>
+</body>
+
+</html>
