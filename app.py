@@ -80,12 +80,20 @@ async def websocket_endpoint(socket: WebSocket) -> None:
                 await socket.send_json({"prediction": None})
                 continue
 
-            await socket.send_json(
-                {
-                    "prediction": smoothed.label,
-                    "confidence": round(smoothed.confidence, 3),
+            payload = {
+                "prediction": smoothed.label,
+                "confidence": round(smoothed.confidence, 3),
+            }
+
+            if smoothed.bounding_box is not None:
+                payload["bbox"] = {
+                    "x1": smoothed.bounding_box.x1,
+                    "y1": smoothed.bounding_box.y1,
+                    "x2": smoothed.bounding_box.x2,
+                    "y2": smoothed.bounding_box.y2,
                 }
-            )
+
+            await socket.send_json(payload)
     except WebSocketDisconnect:
         return
     except Exception as exc:  # pragma: no cover - guard rail for unexpected issues

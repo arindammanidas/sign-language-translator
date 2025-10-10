@@ -4,13 +4,14 @@ from collections import Counter, deque
 from dataclasses import dataclass
 from typing import Deque, Optional
 
-from .model import DetectionResult
+from .model import BoundingBox, DetectionResult
 
 
 @dataclass
 class SmoothedPrediction:
     label: str
     confidence: float
+    bounding_box: Optional[BoundingBox]
 
 
 class PredictionSmoother:
@@ -36,4 +37,15 @@ class PredictionSmoother:
             return None
 
         averaged_confidence = sum(confidences) / len(confidences)
-        return SmoothedPrediction(label=label, confidence=averaged_confidence)
+        bounding_box = None
+        for item in reversed(self._buffer):
+            if item.label == label:
+                bounding_box = item.bounding_box
+                if bounding_box is not None:
+                    break
+
+        return SmoothedPrediction(
+            label=label,
+            confidence=averaged_confidence,
+            bounding_box=bounding_box,
+        )
