@@ -13,7 +13,7 @@ const overlayCtx = overlayCanvas?.getContext("2d");
 const speechSupported = "speechSynthesis" in window && "SpeechSynthesisUtterance" in window;
 
 const LETTER_PRONUNCIATIONS = {
-  A: "ay",
+  A: "ayee",
   B: "bee",
   C: "see",
   D: "dee",
