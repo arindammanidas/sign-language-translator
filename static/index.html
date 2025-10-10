@@ -4,28 +4,56 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ASL Realtime Translator</title>
+  <title>HandCue 1.0 – A realtime translation tool for American Sign Language</title>
   <link rel="stylesheet" href="/static/styles.css">
 </head>
 
 <body>
-  <div class="container">
-    <header>
-      <h1>ASL Realtime Translator</h1>
+  <main class="shell">
+    <header class="hero">
+      <div class="brand">
+        <span class="brand__logo-wrapper">
+          <img src="/static/MU_logo.jpeg" alt="Murdoch University" class="brand__logo" />
+        </span>
+        <div class="brand__copy">
+          <h1 class="brand__title">HandCue <span>1.0</span></h1>
+          <p class="brand__subtitle">A realtime translation tool for American Sign Language</p>
+        </div>
+      </div>
       <span id="status" class="status">Initialising</span>
     </header>
-    <div class="video-wrapper">
-      <video id="camera" autoplay playsinline muted></video>
-      <div class="overlay">
-        <p id="prediction" class="prediction">…</p>
-        <span id="confidence" class="confidence">Waiting for frames</span>
+
+    <section class="viewer">
+      <div class="video-frame">
+        <video id="camera" autoplay playsinline muted></video>
+        <canvas id="overlay-canvas"></canvas>
       </div>
-    </div>
-    <div class="controls">
-      <button id="speak-toggle" type="button">🔇 Voice captions off</button>
-      <div class="instructions">
-        Allow camera access and sign in frame. Prediction text updates in real time. Toggle voice captions to hear spoken output.
+      <div class="caption-bar">
+        <p id="prediction" class="caption-bar__text">CAPTIONS HERE</p>
+        <span id="confidence" class="caption-bar__meta">Waiting for frames</span>
       </div>
+    </section>
+
+    <footer class="footer">
+      <div class="footer__row">
+        <div class="controls">
+          <button id="speak-toggle" type="button" class="btn btn-voice">Voice Off</button>
+          <button id="credits-btn" type="button" class="btn btn-credits">Credits</button>
+        </div>
+        <p class="footnote">A Murdoch University Project. Built with <span>❤️</span> in Singapore.</p>
+      </div>
+    </footer>
+  </main>
+  <div id="credits-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="credits-title" aria-hidden="true">
+    <div class="modal__dialog">
+      <button type="button" class="modal__close" id="close-credits" aria-label="Close credits">×</button>
+      <h2 id="credits-title">HandCue <span>1.0</span></h2>
+      <p class="modal__subtitle">Created by</p>
+      <ul class="modal__list">
+        <li><span>Benjamin Lee Wee Hao</span><span>33803039</span></li>
+        <li><span>Sudeep Koshy Mathews</span><span>35451067</span></li>
+        <li><span>Arindam Mani Das</span><span>35451094</span></li>
+      </ul>
     </div>
   </div>
   <script src="/static/app.js" type="module"></script>

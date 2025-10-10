@@ -13,11 +13,22 @@ _LOGGER = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
+class BoundingBox:
+    """Axis-aligned bounding box normalised to [0, 1] range."""
+
+    x1: float
+    y1: float
+    x2: float
+    y2: float
+
+
+@dataclass(slots=True)
 class DetectionResult:
     """Simple container for a single detection result."""
 
     label: str
     confidence: float
+    bounding_box: Optional[BoundingBox]
 
 
 class YOLOSignLanguageModel:
@@ -71,7 +82,7 @@ class YOLOSignLanguageModel:
                 return None
             label = result.names[top_idx]
             confidence = float(result.probs.top1conf)
-            return DetectionResult(label=label, confidence=confidence)
+            return DetectionResult(label=label, confidence=confidence, bounding_box=None)
 
         if result.boxes is None or result.boxes.cls is None or not len(result.boxes):
             return None
@@ -87,4 +98,14 @@ class YOLOSignLanguageModel:
         if confidence < self._confidence_threshold:
             return None
 
-        return DetectionResult(label=label, confidence=confidence)
+        bbox = None
+        if result.boxes is not None and result.boxes.xyxyn is not None:
+            try:
+                coords = result.boxes.xyxyn[max_idx].cpu().numpy().tolist()
+            except Exception:  # pragma: no cover - fallback if tensor conversion fails
+                coords = None
+            if coords and len(coords) >= 4:
+                x1, y1, x2, y2 = (float(max(0.0, min(1.0, value))) for value in coords[:4])
+                bbox = BoundingBox(x1=x1, y1=y1, x2=x2, y2=y2)
+
+        return DetectionResult(label=label, confidence=confidence, bounding_box=bbox)

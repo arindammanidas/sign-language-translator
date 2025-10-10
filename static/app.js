@@ -2,9 +2,44 @@ const statusEl = document.querySelector("#status");
 const predictionEl = document.querySelector("#prediction");
 const confidenceEl = document.querySelector("#confidence");
 const speakToggleEl = document.querySelector("#speak-toggle");
+const creditsButton = document.querySelector("#credits-btn");
+const creditsModal = document.querySelector("#credits-modal");
+const closeCreditsBtn = document.querySelector("#close-credits");
 const videoEl = document.querySelector("#camera");
+const videoFrameEl = document.querySelector(".video-frame");
+const overlayCanvas = document.querySelector("#overlay-canvas");
+const overlayCtx = overlayCanvas?.getContext("2d");
 
 const speechSupported = "speechSynthesis" in window && "SpeechSynthesisUtterance" in window;
+
+const LETTER_PRONUNCIATIONS = {
+  A: "ay",
+  B: "bee",
+  C: "see",
+  D: "dee",
+  E: "ee",
+  F: "eff",
+  G: "gee",
+  H: "aitch",
+  I: "eye",
+  J: "jay",
+  K: "kay",
+  L: "el",
+  M: "em",
+  N: "en",
+  O: "oh",
+  P: "pee",
+  Q: "cue",
+  R: "ar",
+  S: "ess",
+  T: "tee",
+  U: "you",
+  V: "vee",
+  W: "double you",
+  X: "ex",
+  Y: "why",
+  Z: "zee",
+};
 
 const canvas = document.createElement("canvas");
 const context = canvas.getContext("2d", { willReadFrequently: true });
@@ -12,6 +47,10 @@ let websocket;
 let streaming = false;
 let speaking = false;
 let frameIntervalId;
+let latestBox = null;
+let lastPredictionLabel = null;
+let detectionActive = false;
+let lastFocusedElement = null;
 
 const formatConfidence = (value) =>
   typeof value === "number" ? `${Math.round(value * 100)}% confidence` : "";
@@ -21,11 +60,18 @@ function updateStatus(text, variant = "info") {
   statusEl.dataset.variant = variant;
 }
 
+function normaliseSpeechText(text) {
+  if (typeof text === "string" && text.length === 1 && LETTER_PRONUNCIATIONS[text]) {
+    return LETTER_PRONUNCIATIONS[text];
+  }
+  return text;
+}
+
 function speak(text) {
   if (!speechSupported || !speaking || !text) {
     return;
   }
-  const utterance = new SpeechSynthesisUtterance(text);
+  const utterance = new SpeechSynthesisUtterance(normaliseSpeechText(text));
   utterance.lang = "en-US";
   window.speechSynthesis.cancel();
   window.speechSynthesis.speak(utterance);
@@ -35,12 +81,92 @@ function handlePrediction(payload) {
   if (!payload || !payload.prediction) {
     predictionEl.textContent = "…";
     confidenceEl.textContent = "Listening";
+    drawBoundingBox(null);
+    detectionActive = false;
+    lastPredictionLabel = null;
     return;
   }
 
-  predictionEl.textContent = payload.prediction;
-  confidenceEl.textContent = formatConfidence(payload.confidence);
-  speak(payload.prediction);
+  const { prediction, confidence } = payload;
+  predictionEl.textContent = prediction;
+  confidenceEl.textContent = formatConfidence(confidence);
+  drawBoundingBox(payload.bbox ?? null);
+  const shouldSpeak = !detectionActive || prediction !== lastPredictionLabel;
+  if (shouldSpeak) {
+    speak(prediction);
+  }
+  detectionActive = true;
+  lastPredictionLabel = prediction;
+}
+
+function updateVoiceButton() {
+  if (!speakToggleEl) {
+    return;
+  }
+  speakToggleEl.textContent = speaking ? "Voice On" : "Voice Off";
+  speakToggleEl.classList.toggle("active", speaking);
+}
+
+function showCreditsModal() {
+  if (!creditsModal) {
+    return;
+  }
+  lastFocusedElement = document.activeElement;
+  creditsModal.classList.remove("hidden");
+  creditsModal.setAttribute("aria-hidden", "false");
+  closeCreditsBtn?.focus();
+}
+
+function hideCreditsModal() {
+  if (!creditsModal) {
+    return;
+  }
+  creditsModal.classList.add("hidden");
+  creditsModal.setAttribute("aria-hidden", "true");
+  if (lastFocusedElement instanceof HTMLElement) {
+    lastFocusedElement.focus();
+  }
+}
+
+function syncOverlaySize() {
+  if (!overlayCanvas || !videoFrameEl) {
+    return;
+  }
+
+  const { clientWidth, clientHeight } = videoFrameEl;
+  if (overlayCanvas.width !== clientWidth || overlayCanvas.height !== clientHeight) {
+    overlayCanvas.width = clientWidth;
+    overlayCanvas.height = clientHeight;
+  }
+}
+
+function drawBoundingBox(box) {
+  if (!overlayCanvas || !overlayCtx) {
+    return;
+  }
+
+  latestBox = box;
+  syncOverlaySize();
+
+  overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+  if (!box) {
+    return;
+  }
+
+  const width = overlayCanvas.width;
+  const height = overlayCanvas.height;
+
+  const x = box.x1 * width;
+  const y = box.y1 * height;
+  const w = (box.x2 - box.x1) * width;
+  const h = (box.y2 - box.y1) * height;
+
+  overlayCtx.strokeStyle = "rgba(250, 204, 21, 0.95)";
+  overlayCtx.lineWidth = Math.max(2, width * 0.01);
+  overlayCtx.shadowColor = "rgba(15, 23, 42, 0.8)";
+  overlayCtx.shadowBlur = 8;
+  overlayCtx.strokeRect(x, y, w, h);
+  overlayCtx.shadowBlur = 0;
 }
 
 function startStreaming() {
@@ -110,27 +236,65 @@ async function initialiseCamera() {
     const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
     videoEl.srcObject = stream;
     await videoEl.play();
+    syncOverlaySize();
   } catch (error) {
     updateStatus("Camera access denied", "error");
     throw error;
   }
 }
 
-speakToggleEl.addEventListener("click", () => {
+if (overlayCanvas && videoFrameEl && typeof ResizeObserver !== "undefined") {
+  const resizeObserver = new ResizeObserver(() => {
+    syncOverlaySize();
+    if (latestBox) {
+      drawBoundingBox(latestBox);
+    }
+  });
+  resizeObserver.observe(videoFrameEl);
+}
+
+if (speakToggleEl) {
+  speakToggleEl.addEventListener("click", () => {
+    if (!speechSupported) {
+      return;
+    }
+    speaking = !speaking;
+    updateVoiceButton();
+    if (!speaking) {
+      window.speechSynthesis.cancel();
+    }
+  });
+
   if (!speechSupported) {
-    return;
+    speakToggleEl.textContent = "Voice Unavailable";
+    speakToggleEl.disabled = true;
+    speakToggleEl.classList.remove("active");
+  } else {
+    updateVoiceButton();
   }
-  speaking = !speaking;
-  speakToggleEl.textContent = speaking ? "🔊 Voice captions on" : "🔇 Voice captions off";
-  if (!speaking) {
-    window.speechSynthesis.cancel();
+}
+
+if (creditsButton) {
+  creditsButton.addEventListener("click", showCreditsModal);
+}
+
+if (closeCreditsBtn) {
+  closeCreditsBtn.addEventListener("click", hideCreditsModal);
+}
+
+if (creditsModal) {
+  creditsModal.addEventListener("click", (event) => {
+    if (event.target === creditsModal) {
+      hideCreditsModal();
+    }
+  });
+}
+
+window.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && creditsModal && !creditsModal.classList.contains("hidden")) {
+    hideCreditsModal();
   }
 });
-
-if (!speechSupported) {
-  speakToggleEl.textContent = "🔇 Voice captions unavailable";
-  speakToggleEl.disabled = true;
-}
 
 (async () => {
   updateStatus("Awaiting camera permission", "info");
