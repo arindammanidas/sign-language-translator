@@ -332,9 +332,37 @@ def run_training(args: argparse.Namespace) -> None:
     val_dataset = ASLDataset(val_images, val_labels, class_names)
     test_dataset = ASLDataset(test_images, test_labels, class_names)
 
-    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, collate_fn=collate_fn)
-    val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, collate_fn=collate_fn)
-    test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, collate_fn=collate_fn)
+    device = get_device(args.device)
+    pin_memory = device.type == "cuda"
+    persistent = args.num_workers > 0
+
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=args.batch_size,
+        shuffle=True,
+        collate_fn=collate_fn,
+        num_workers=args.num_workers,
+        pin_memory=pin_memory,
+        persistent_workers=persistent,
+    )
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size=args.batch_size,
+        shuffle=False,
+        collate_fn=collate_fn,
+        num_workers=args.num_workers,
+        pin_memory=pin_memory,
+        persistent_workers=persistent,
+    )
+    test_loader = DataLoader(
+        test_dataset,
+        batch_size=args.batch_size,
+        shuffle=False,
+        collate_fn=collate_fn,
+        num_workers=args.num_workers,
+        pin_memory=pin_memory,
+        persistent_workers=persistent,
+    )
 
     if args.model == "fasterrcnn_mobilenet_v3_large_fpn":
         model = torchvision.models.detection.fasterrcnn_mobilenet_v3_large_fpn(weights="DEFAULT")
@@ -351,7 +379,6 @@ def run_training(args: argparse.Namespace) -> None:
     else:
         raise ValueError(f"Unsupported model {args.model}")
 
-    device = get_device(args.device)
     model.to(device)
 
     params = [p for p in model.parameters() if p.requires_grad]
@@ -410,6 +437,12 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--batch-size", type=int, default=4, help="Batch size for training")
     parser.add_argument("--learning-rate", type=float, default=5e-4, help="Initial learning rate")
     parser.add_argument("--device", type=str, default=None, help="Torch device id (cpu, cuda, mps)")
+    parser.add_argument(
+        "--num-workers",
+        type=int,
+        default=0,
+        help="Number of DataLoader workers (0 for main process only)",
+    )
     return parser.parse_args(argv)
 
 
