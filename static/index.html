@@ -29,7 +29,7 @@
         <canvas id="overlay-canvas"></canvas>
       </div>
       <div class="caption-bar">
-        <p id="prediction" class="caption-bar__text">...</p>
+        <p id="prediction" class="caption-bar__text"> ··· </p>
         <span id="confidence" class="caption-bar__meta">Waiting for frames</span>
       </div>
     </section>
@@ -37,8 +37,18 @@
     <footer class="footer">
       <div class="footer__row">
         <div class="controls">
-          <button id="speak-toggle" type="button" class="btn btn-voice">Voice Off</button>
-          <button id="credits-btn" type="button" class="btn btn-credits">Credits</button>
+          <button id="speak-toggle" type="button" class="btn btn-voice">
+            <span class="btn__icon" aria-hidden="true">🔇</span>
+            <span class="btn__label">Voice Off</span>
+          </button>
+          <button id="clear-captions" type="button" class="btn btn-reset">
+            <span class="btn__icon" aria-hidden="true">🧹</span>
+            <span class="btn__label">Clear</span>
+          </button>
+          <button id="credits-btn" type="button" class="btn btn-credits">
+            <span class="btn__icon" aria-hidden="true">ℹ️</span>
+            <span class="btn__label">Credits</span>
+          </button>
         </div>
         <p class="footnote">A Murdoch University Project. Built with <span>❤️</span> in Singapore.</p>
       </div>

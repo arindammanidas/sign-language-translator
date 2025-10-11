@@ -2,7 +2,10 @@ const statusEl = document.querySelector("#status");
 const predictionEl = document.querySelector("#prediction");
 const confidenceEl = document.querySelector("#confidence");
 const speakToggleEl = document.querySelector("#speak-toggle");
+const speakToggleIcon = speakToggleEl?.querySelector(".btn__icon");
+const speakToggleLabel = speakToggleEl?.querySelector(".btn__label");
 const creditsButton = document.querySelector("#credits-btn");
+const clearCaptionsButton = document.querySelector("#clear-captions");
 const creditsModal = document.querySelector("#credits-modal");
 const closeCreditsBtn = document.querySelector("#close-credits");
 const videoEl = document.querySelector("#camera");
@@ -53,6 +56,10 @@ let detectionActive = false;
 let lastFocusedElement = null;
 let frameIntervalMs = 400;
 let jpegQuality = 0.4;
+const captionTokens = [];
+let noDetectionTimeoutId = null;
+let noDetectionDelayMs = 5000;
+const TAB_TOKEN = " ··· ";
 
 const formatConfidence = (value) =>
   typeof value === "number" ? `${Math.round(value * 100)}% confidence` : "";
@@ -81,8 +88,9 @@ function speak(text) {
 
 function handlePrediction(payload) {
   if (!payload || !payload.prediction) {
-    predictionEl.textContent = "…";
-    confidenceEl.textContent = "Listening";
+    scheduleNoDetectionSpace();
+    updateCaptionDisplay();
+    confidenceEl.textContent = "Make a sign";
     drawBoundingBox(null);
     detectionActive = false;
     lastPredictionLabel = null;
@@ -90,7 +98,9 @@ function handlePrediction(payload) {
   }
 
   const { prediction, confidence } = payload;
-  predictionEl.textContent = prediction;
+  clearNoDetectionSpace();
+  captionTokens.push(prediction);
+  updateCaptionDisplay();
   confidenceEl.textContent = formatConfidence(confidence);
   drawBoundingBox(payload.bbox ?? null);
   const shouldSpeak = !detectionActive || prediction !== lastPredictionLabel;
@@ -102,10 +112,11 @@ function handlePrediction(payload) {
 }
 
 function updateVoiceButton() {
-  if (!speakToggleEl) {
+  if (!speakToggleEl || !speakToggleLabel || !speakToggleIcon) {
     return;
   }
-  speakToggleEl.textContent = speaking ? "Voice On" : "Voice Off";
+  speakToggleLabel.textContent = speaking ? "Voice On" : "Voice Off";
+  speakToggleIcon.textContent = speaking ? "🔊" : "🔇";
   speakToggleEl.classList.toggle("active", speaking);
 }
 
@@ -205,31 +216,31 @@ function createWebSocket() {
   websocket = new WebSocket(`${protocol}://${window.location.host}/ws`);
 
   websocket.onopen = () => {
-    updateStatus("Connected", "success");
+    updateStatus("CONNECTED", "success");
     startStreaming();
   };
 
   websocket.onclose = () => {
-    updateStatus("Disconnected", "warning");
+    updateStatus("DISCONNECTED", "warning");
     stopStreaming();
     window.setTimeout(createWebSocket, 2000);
   };
 
   websocket.onerror = () => {
-    updateStatus("Error", "error");
+    updateStatus("ERROR", "error");
   };
 
   websocket.onmessage = (event) => {
     try {
       const payload = JSON.parse(event.data);
       if (payload.error) {
-        updateStatus(`Error: ${payload.error}`, "error");
+        updateStatus(`ERROR: ${payload.error}`, "error");
         return;
       }
-      updateStatus("Listening", "success");
+      updateStatus("CAMERA ON", "success");
       handlePrediction(payload);
     } catch (error) {
-      updateStatus("Invalid server response", "error");
+      updateStatus("INVALID SERVER RESPONSE", "error");
     }
   };
 }
@@ -241,7 +252,7 @@ async function initialiseCamera() {
     await videoEl.play();
     syncOverlaySize();
   } catch (error) {
-    updateStatus("Camera access denied", "error");
+    updateStatus("CAMERA ACCESS DENIED", "error");
     throw error;
   }
 }
@@ -269,7 +280,12 @@ if (speakToggleEl) {
   });
 
   if (!speechSupported) {
-    speakToggleEl.textContent = "Voice Unavailable";
+    if (speakToggleLabel) {
+      speakToggleLabel.textContent = "Unavailable";
+    }
+    if (speakToggleIcon) {
+      speakToggleIcon.textContent = "🚫";
+    }
     speakToggleEl.disabled = true;
     speakToggleEl.classList.remove("active");
   } else {
@@ -293,6 +309,13 @@ if (creditsModal) {
   });
 }
 
+if (clearCaptionsButton) {
+  clearCaptionsButton.addEventListener("click", () => {
+    captionTokens.length = 0;
+    updateCaptionDisplay();
+  });
+}
+
 window.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && creditsModal && !creditsModal.classList.contains("hidden")) {
     hideCreditsModal();
@@ -312,15 +335,51 @@ async function loadClientConfig() {
     if (typeof payload.jpeg_quality === "number") {
       jpegQuality = payload.jpeg_quality;
     }
+    if (typeof payload.no_detection_delay_ms === "number") {
+      noDetectionDelayMs = Math.max(500, Math.floor(payload.no_detection_delay_ms));
+    }
   } catch (error) {
     console.warn("Failed to load client config", error);
   }
 }
 
+function updateCaptionDisplay() {
+  if (!captionTokens.length) {
+    predictionEl.textContent = " ··· ";
+    return;
+  }
+
+  predictionEl.textContent = captionTokens.join(" ");
+  while (captionTokens.length > 1 && predictionEl.scrollWidth > predictionEl.clientWidth) {
+    captionTokens.shift();
+    predictionEl.textContent = captionTokens.join(" ");
+  }
+}
+
+function scheduleNoDetectionSpace() {
+  if (noDetectionTimeoutId !== null) {
+    return;
+  }
+  noDetectionTimeoutId = window.setTimeout(() => {
+    if (captionTokens.length !== 0 && captionTokens[captionTokens.length - 1] !== TAB_TOKEN) {
+      captionTokens.push(TAB_TOKEN);
+      updateCaptionDisplay();
+    }
+    noDetectionTimeoutId = null;
+  }, noDetectionDelayMs);
+}
+
+function clearNoDetectionSpace() {
+  if (noDetectionTimeoutId !== null) {
+    window.clearTimeout(noDetectionTimeoutId);
+    noDetectionTimeoutId = null;
+  }
+}
+
 (async () => {
-  updateStatus("Awaiting camera permission", "info");
+  updateStatus("AWAITING PERMISSIONS", "info");
   await loadClientConfig();
   await initialiseCamera();
-  updateStatus("Connecting", "info");
+  updateStatus("CONNECTING", "info");
   createWebSocket();
 })();

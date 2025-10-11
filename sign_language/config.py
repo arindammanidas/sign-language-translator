@@ -37,6 +37,11 @@ class Settings(BaseSettings):
         le=1.0,
         description="JPEG quality used when encoding frames in the browser.",
     )
+    no_detection_delay_ms: int = Field(
+        default=5000,
+        ge=1000,
+        description="Delay before appending a filler token when no detections arrive.",
+    )
 
     model_config = SettingsConfigDict(
         env_prefix="asl_",

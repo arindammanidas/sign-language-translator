@@ -60,6 +60,7 @@ async def client_config() -> JSONResponse:
         "frame_interval_ms": settings.frame_interval_ms,
         "jpeg_quality": settings.jpeg_quality,
         "confidence_threshold": settings.confidence_threshold,
+        "no_detection_delay_ms": settings.no_detection_delay_ms,
     }
     return JSONResponse(payload)
 
