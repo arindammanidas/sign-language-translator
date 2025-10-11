@@ -26,6 +26,17 @@ class Settings(BaseSettings):
         ge=1,
         description="Number of most recent predictions used when smoothing noisy outputs.",
     )
+    frame_interval_ms: int = Field(
+        default=400,
+        ge=100,
+        description="Interval between frames sent from the browser in milliseconds.",
+    )
+    jpeg_quality: float = Field(
+        default=0.4,
+        ge=0.1,
+        le=1.0,
+        description="JPEG quality used when encoding frames in the browser.",
+    )
 
     model_config = SettingsConfigDict(
         env_prefix="asl_",

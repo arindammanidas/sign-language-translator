@@ -54,6 +54,16 @@ async def healthcheck() -> JSONResponse:
     return JSONResponse(payload)
 
 
+@app.get("/config")
+async def client_config() -> JSONResponse:
+    payload: Dict[str, Any] = {
+        "frame_interval_ms": settings.frame_interval_ms,
+        "jpeg_quality": settings.jpeg_quality,
+        "confidence_threshold": settings.confidence_threshold,
+    }
+    return JSONResponse(payload)
+
+
 @app.websocket("/ws")
 async def websocket_endpoint(socket: WebSocket) -> None:
     await socket.accept()

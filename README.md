@@ -40,6 +40,8 @@ Optionally create a `.env` file to override defaults:
 ASL_MODEL_PATH=/absolute/path/to/your/asl-weights.pt
 ASL_CONFIDENCE_THRESHOLD=0.4
 ASL_SMOOTHING_WINDOW=7
+ASL_FRAME_INTERVAL_MS=400
+ASL_JPEG_QUALITY=0.4
 ```
 
 ## Train the ASL model

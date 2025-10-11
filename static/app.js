@@ -51,6 +51,8 @@ let latestBox = null;
 let lastPredictionLabel = null;
 let detectionActive = false;
 let lastFocusedElement = null;
+let frameIntervalMs = 400;
+let jpegQuality = 0.4;
 
 const formatConfidence = (value) =>
   typeof value === "number" ? `${Math.round(value * 100)}% confidence` : "";
@@ -187,9 +189,10 @@ function startStreaming() {
     canvas.width = width;
     canvas.height = height;
     context.drawImage(videoEl, 0, 0, width, height);
-    const dataUrl = canvas.toDataURL("image/jpeg", 0.4);
+    const quality = Math.min(Math.max(jpegQuality, 0.1), 1);
+    const dataUrl = canvas.toDataURL("image/jpeg", quality);
     websocket.send(JSON.stringify({ frame: dataUrl }));
-  }, 400);
+  }, frameIntervalMs);
 }
 
 function stopStreaming() {
@@ -296,8 +299,27 @@ window.addEventListener("keydown", (event) => {
   }
 });
 
+async function loadClientConfig() {
+  try {
+    const response = await fetch("/config");
+    if (!response.ok) {
+      return;
+    }
+    const payload = await response.json();
+    if (typeof payload.frame_interval_ms === "number") {
+      frameIntervalMs = Math.max(100, Math.floor(payload.frame_interval_ms));
+    }
+    if (typeof payload.jpeg_quality === "number") {
+      jpegQuality = payload.jpeg_quality;
+    }
+  } catch (error) {
+    console.warn("Failed to load client config", error);
+  }
+}
+
 (async () => {
   updateStatus("Awaiting camera permission", "info");
+  await loadClientConfig();
   await initialiseCamera();
   updateStatus("Connecting", "info");
   createWebSocket();
