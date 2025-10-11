@@ -67,9 +67,26 @@ def _resolve_split_dirs(data_cfg: Dict[str, object], key: str, base_dir: Path) -
     value = data_cfg.get(key)
     if not isinstance(value, str):
         raise ValueError(f"Expected '{key}' entry in data.yaml")
-    images_dir = (base_dir / value).resolve()
-    labels_dir = images_dir.parent / "labels"
-    return images_dir, labels_dir
+
+    rel_path = Path(value)
+    candidates = []
+
+    if rel_path.is_absolute():
+        candidates.append(rel_path)
+    else:
+        candidates.append((base_dir / rel_path).resolve())
+        if rel_path.parts and rel_path.parts[0] == "..":
+            trimmed = Path(*rel_path.parts[1:])
+            candidates.append((base_dir / trimmed).resolve())
+
+    for candidate in candidates:
+        images_dir = candidate
+        if images_dir.exists():
+            labels_dir = images_dir.parent / "labels"
+            if labels_dir.exists():
+                return images_dir, labels_dir
+
+    raise FileNotFoundError(f"Unable to resolve '{key}' directories for {value}")
 
 
 def _iter_image_label_pairs(images_dir: Path, labels_dir: Path) -> Iterable[Tuple[Path, Path]]:
@@ -257,8 +274,16 @@ def run_pipeline(args: argparse.Namespace) -> None:
     test_acc, logits, labels = _evaluate(model, test_loader)
     preds = logits.argmax(axis=1)
     macro_f1 = f1_score(labels, preds, average="macro")
-    report = classification_report(labels, preds, target_names=class_names, output_dict=True)
-    cmatrix = confusion_matrix(labels, preds).tolist()
+    label_indices = list(range(len(class_names)))
+    report = classification_report(
+        labels,
+        preds,
+        labels=label_indices,
+        target_names=class_names,
+        output_dict=True,
+        zero_division=0,
+    )
+    cmatrix = confusion_matrix(labels, preds, labels=label_indices).tolist()
 
     metrics = {
         "test_accuracy": test_acc,

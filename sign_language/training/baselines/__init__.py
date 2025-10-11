@@ -2,5 +2,5 @@
 
 __all__ = [
     "mediapipe_classifier",
-    "tfod_export",
+    "torchvision_detector",
 ]

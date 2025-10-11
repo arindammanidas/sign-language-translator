@@ -1,4 +1,4 @@
-# ASL Realtime Translator
+# LumenSign: ASL Realtime Translator
 
 A minimalist end-to-end prototype that streams webcam frames from the browser to a FastAPI backend, performs American Sign Language (ASL) detection with the latest Ultralytics YOLO models, and renders live captions (plus optional speech) on the page.
 
@@ -47,30 +47,14 @@ ASL_SMOOTHING_WINDOW=7
 Fine-tuning weights for the bundled ASL letters dataset can be done directly from this project:
 
 ```bash
-python -m sign_language.training.asl_letters.trainer --epochs 50 --batch-size 16
+python -m sign_language.training.asl_letters.trainer --epochs 50 --batch-size 16 --device <mps|cpu>
 ```
 
 The script loads the pretrained checkpoint at `sign_language/models/yolo11n.pt`, trains on the images listed in `sign_language/training/asl_letters/data.yaml`, and copies the best weights to `models/asl-sign-detector.pt`. Adjust flags such as `--device`, `--epochs`, `--image-size`, or `--output` if you wish to customise the run. Ultralytics will store full training artifacts under `sign_language/training/runs/<run-name>/`.
 
 ### Baseline benchmarks
 
-To compare YOLO11 against alternative pipelines, optional helpers are provided:
-
-```bash
-pip install -r requirements-baselines.txt
-
-# MediaPipe + MLP classifier baseline
-python -m sign_language.training.baselines.mediapipe_classifier \
-  --data sign_language/training/asl_letters/data.yaml \
-  --output sign_language/training/runs/mediapipe_baseline
-
-# Export TFRecords for TensorFlow Object Detection API
-python -m sign_language.training.baselines.tfod_export \
-  --data sign_language/training/asl_letters/data.yaml \
-  --output sign_language/training/runs/tfod
-```
-
-Full instructions and comparison guidance live in `docs/model_comparison.md`.
+To compare YOLO11 against alternative pipelines, full instructions and comparison guidance live in `docs/model_comparison.md`.
 
 ### Helper CLI
 
@@ -81,7 +65,7 @@ A convenience wrapper keeps the common commands in one place:
 ./manage.sh serve --reload
 
 # Fine-tune the ASL letters model
-./manage.sh train --epochs 50 --batch-size 16
+./manage.sh train --epochs 50 --batch-size 16 --device <mps|cpu>
 
 # Remove training artifacts (runs directory + generated weights)
 ./manage.sh clean

@@ -18,10 +18,6 @@ The goal is to quantify accuracy, latency, and operational overhead to justify Y
 - Record results in a shared experiment tracker (Weights & Biases, MLflow, spreadsheet, etc.).
 - Use identical augmentations where possible (colour jitter, affine transforms) to maintain fairness.
 
-## Baseline 1 – MediaPipe Hands + MLP Classifier
-
-This baseline extracts 21 hand landmarks via MediaPipe and trains a small MLP to classify letters.
-
 ### Requirements
 
 Install optional dependencies:
@@ -30,12 +26,16 @@ Install optional dependencies:
 pip install -r requirements-baselines.txt
 ```
 
+## Baseline 1 – MediaPipe Hands + MLP Classifier
+
+This baseline extracts 21 hand landmarks via MediaPipe and trains a small MLP to classify letters.
+
 ### Training
 
 ```bash
 python -m sign_language.training.baselines.mediapipe_classifier \
   --data sign_language/training/asl_letters/data.yaml \
-  --epochs 60 \
+  --epochs 50 \
   --batch-size 256 \
   --learning-rate 1e-3 \
   --output sign_language/training/runs/mediapipe_baseline
@@ -48,66 +48,35 @@ Artifacts:
 
 Metrics to capture: overall accuracy, macro F1, confusion matrix, MediaPipe failure rate (images without detected hands), and CPU inference latency (MediaPipe + MLP).
 
-## Baseline 2 – TensorFlow Object Detection API
+## Baseline 2 – TorchVision Detectors (PyTorch)
 
-This experiment converts the dataset into TFRecords and trains a detector such as EfficientDet-D0 or SSD MobileNet V2 using the TFOD API.
+This experiment fine-tunes detectors such as Faster R-CNN or RetinaNet using TorchVision’s detection zoo.
 
-### Requirements
-
-- TensorFlow 2.x (`pip install tensorflow`)
-- TensorFlow Models repository with Object Detection API installed: <https://github.com/tensorflow/models/tree/master/research/object_detection>
-
-Optional dependencies are listed in `requirements-baselines.txt`.
-
-### Export TFRecords
+### Training
 
 ```bash
-python -m sign_language.training.baselines.tfod_export \
+python -m sign_language.training.baselines.torchvision_detector \
   --data sign_language/training/asl_letters/data.yaml \
-  --output sign_language/training/runs/tfod
+  --model fasterrcnn_mobilenet_v3_large_fpn \
+  --epochs 50 \
+  --batch-size 8 \
+  --device cpu \
+  --output sign_language/training/runs/torchvision_detector
 ```
 
-Outputs:
-
-- `train.record`, `val.record`, `test.record`
-- `label_map.pbtxt`
-
-### Configure Training
-
-1. Copy a baseline pipeline config, e.g. `ssd_mobilenet_v2_fpnlite_320x320_coco17_tpu-8.config`.
-2. Update the config:
-   - `fine_tune_checkpoint` to the chosen pretrained checkpoint.
-   - `train_config.batch_size`, `num_steps`, and optimizer schedule.
-   - Input readers to point at the new TFRecords and label map.
-
-### Launch Training
+To test RetinaNet instead:
 
 ```bash
-python model_main_tf2.py \
-  --model_dir=training/tfod_asl \
-  --pipeline_config_path=path/to/updated_config.config
+python -m sign_language.training.baselines.torchvision_detector \
+  --model retinanet_resnet50_fpn
 ```
 
-Run evaluation (optional during training):
+Artifacts:
 
-```bash
-python model_main_tf2.py \
-  --model_dir=training/tfod_asl \
-  --pipeline_config_path=path/to/updated_config.config \
-  --checkpoint_dir=training/tfod_asl
-```
+- `sign_language/training/runs/torchvision_detector/best_model.pt`
+- `sign_language/training/runs/torchvision_detector/metrics.json`
 
-Export the trained model:
-
-```bash
-python exporter_main_v2.py \
-  --input_type image_tensor \
-  --pipeline_config_path path/to/updated_config.config \
-  --trained_checkpoint_dir training/tfod_asl \
-  --output_directory training/tfod_asl/exported_model
-```
-
-Record evaluation metrics (mAP@0.5, precision/recall) and measure inference latency with the exported SavedModel using `tensorflow` or `tfjs` runners.
+Record evaluation metrics (mAP@0.5, macro F1, per-class precision/recall) and measure inference latency using TorchVision’s inference API on CPU, CUDA, or MPS as appropriate.
 
 ## Presenting Results
 
@@ -117,6 +86,36 @@ Create a comparison table summarising:
 |-------|----------------|----------|--------------|------------|-------|
 | YOLO11n (current) | … | … | … | … | Strong balance of accuracy & speed |
 | MediaPipe + MLP | … | … | … | … | Dependent on landmark detection, CPU-friendly |
-| TFOD (EfficientDet/SSD) | … | … | … | … | Requires TFRecords and heavier toolchain |
+| TorchVision (Faster R-CNN/RetinaNet) | … | … | … | … | Same PyTorch stack, slower but informative baseline |
 
 Use the table plus qualitative observations (operational complexity, dependency count, integration effort) to motivate continuing with YOLO11 for production.
+
+### YOLO metrics + automated comparison
+
+Generate YOLO metrics in the same JSON format as the baselines:
+
+```bash
+python tools/generate_yolo_metrics.py \
+  --weights models/asl-sign-detector.pt \
+  --data sign_language/training/asl_letters/data.yaml \
+  --split test \
+  --device mps
+```
+
+### Automated comparison script
+
+After training each baseline you can generate a unified report:
+
+```bash
+python tools/compare_metrics.py \
+  --metrics \
+    "YOLO11=sign_language/training/runs/yolo_eval/metrics.json" \
+    "MediaPipe=sign_language/training/runs/mediapipe_baseline/metrics.json" \
+    "TorchVision=sign_language/training/runs/torchvision_detector/metrics.json" \
+  --output-dir sign_language/training/runs/comparison
+```
+
+This script prints a table to the console and saves:
+
+- `comparison_table.md` – Markdown summary of mAP@0.5, macro F1, precision/recall averages.
+- `comparison_plot.png` – Bar chart comparing key metrics across models.

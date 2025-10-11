@@ -170,6 +170,7 @@ cython_debug/
 
 # Ultralytics training runs
 sign_language/training/runs/
+runs/
 
 # PyCharm
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
