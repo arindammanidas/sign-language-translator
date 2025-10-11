@@ -70,10 +70,12 @@ cmd_train() {
 cmd_clean() {
   local runs_dir="${SCRIPT_DIR}/sign_language/training/runs"
   local weights_path="${SCRIPT_DIR}/models/asl-sign-detector.pt"
+  local cache_glob="${SCRIPT_DIR}/sign_language/training/asl_letters"/*/labels.cache
 
   echo "This will remove training artifacts:"
   echo "  - ${runs_dir}"
   echo "  - ${weights_path}"
+  echo "  - ${cache_glob}"
   read -r -p "Proceed? [y/N]: " response
 
   case "$response" in
@@ -90,6 +92,18 @@ cmd_clean() {
         echo "Removed $weights_path"
       else
         echo "No weights file found at $weights_path"
+      fi
+
+      local removed=false
+      shopt -s nullglob
+      for cache_path in $cache_glob; do
+        rm -f "$cache_path"
+        echo "Removed $cache_path"
+        removed=true
+      done
+      shopt -u nullglob
+      if [[ "$removed" = false ]]; then
+        echo "No label cache files found"
       fi
       ;;
     *)
