@@ -10,12 +10,12 @@ Usage: ./manage.sh <command> [options]
 
 Commands:
   serve   Start the FastAPI app with uvicorn (options: --host, --port, --reload, ...)
-  train   Run the ASL letters training module (additional args forwarded directly)
+  train   Run an ASL training module (use --dataset letters|words, defaults to letters)
   clean   Remove training artifacts (runs directory and generated weights)
 
 Examples:
   ./manage.sh serve --reload
-  ./manage.sh train --epochs 50 --batch-size 16
+  ./manage.sh train --dataset letters|words --epochs 50 --batch-size 16 --device mps|cpu|cuda
   ./manage.sh clean
 USAGE
 }
@@ -59,9 +59,40 @@ cmd_serve() {
 }
 
 cmd_train() {
-  local cmd=("python" "-m" "sign_language.training.asl_letters_v2.trainer")
-  if (( $# )); then
-    cmd+=("$@")
+  local dataset="letters"
+  local forwarded=()
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --dataset)
+        [[ $# -lt 2 ]] && { echo "Missing value for --dataset" >&2; exit 1; }
+        dataset="$2"
+        shift 2
+        ;;
+      *)
+        forwarded+=("$1")
+        shift
+        ;;
+    esac
+  done
+
+  local module=""
+  case "$dataset" in
+    letters)
+      module="sign_language.training.asl_letters_v2.trainer"
+      ;;
+    words)
+      module="sign_language.training.asl_words.trainer"
+      ;;
+    *)
+      echo "Unknown dataset '$dataset'. Use 'letters' or 'words'." >&2
+      exit 1
+      ;;
+  esac
+
+  local cmd=("python" "-m" "$module")
+  if (( ${#forwarded[@]} )); then
+    cmd+=("${forwarded[@]}")
   fi
 
   exec "${cmd[@]}"
@@ -70,12 +101,19 @@ cmd_train() {
 cmd_clean() {
   local runs_dir="${SCRIPT_DIR}/sign_language/training/runs"
   local weights_path="${SCRIPT_DIR}/models/asl-sign-detector.pt"
-  local cache_glob="${SCRIPT_DIR}/sign_language/training/asl_letters_v2"/*/labels.cache
+  local weights_words_path="${SCRIPT_DIR}/models/asl-words-detector.pt"
+  local cache_dirs=(
+    "${SCRIPT_DIR}/sign_language/training/asl_letters_v2"
+    "${SCRIPT_DIR}/sign_language/training/asl_words"
+  )
 
   echo "This will remove training artifacts:"
   echo "  - ${runs_dir}"
   echo "  - ${weights_path}"
-  echo "  - ${cache_glob}"
+  echo "  - ${weights_words_path}"
+  for dir in "${cache_dirs[@]}"; do
+    echo "  - ${dir}/*/labels.cache"
+  done
   read -r -p "Proceed? [y/N]: " response
 
   case "$response" in
@@ -94,12 +132,21 @@ cmd_clean() {
         echo "No weights file found at $weights_path"
       fi
 
+      if [[ -f "$weights_words_path" ]]; then
+        rm -f "$weights_words_path"
+        echo "Removed $weights_words_path"
+      else
+        echo "No weights file found at $weights_words_path"
+      fi
+
       local removed=false
       shopt -s nullglob
-      for cache_path in $cache_glob; do
-        rm -f "$cache_path"
-        echo "Removed $cache_path"
-        removed=true
+      for dir in "${cache_dirs[@]}"; do
+        for cache_path in "${dir}"/*/labels.cache; do
+          rm -f "$cache_path"
+          echo "Removed $cache_path"
+          removed=true
+        done
       done
       shopt -u nullglob
       if [[ "$removed" = false ]]; then

@@ -47,13 +47,19 @@ ASL_NO_DETECTION_DELAY_MS=5000
 
 ## Train the ASL model
 
-Fine-tuning weights for the bundled ASL letters dataset can be done directly from this project:
+Fine-tuning weights for the bundled ASL datasets can be done directly from this project. Letters (default):
 
 ```bash
 python -m sign_language.training.asl_letters_v2.trainer --epochs 50 --batch-size 16 --device <mps|cpu>
 ```
 
-The script loads the pretrained checkpoint at `sign_language/models/yolo11n.pt`, trains on the images listed in `sign_language/training/asl_letters_v2/data.yaml`, and copies the best weights to `models/asl-sign-detector.pt`. Adjust flags such as `--device`, `--epochs`, `--image-size`, or `--output` if you wish to customise the run. Ultralytics will store full training artifacts under `sign_language/training/runs/<run-name>/`.
+For ASL words:
+
+```bash
+python -m sign_language.training.asl_words.trainer --epochs 50 --batch-size 16 --device <mps|cpu>
+```
+
+Each script loads the pretrained checkpoint at `sign_language/models/yolo11n.pt`, trains on the images listed in the corresponding `sign_language/training/<dataset>/data.yaml`, and copies the best weights to `models/asl-sign-detector.pt` (letters) or `models/asl-words-detector.pt` (words). Adjust flags such as `--device`, `--epochs`, `--image-size`, or `--output` if you wish to customise the run. Ultralytics stores full training artifacts under `sign_language/training/runs/<run-name>/`.
 
 ### Baseline benchmarks
 
@@ -67,8 +73,11 @@ A convenience wrapper keeps the common commands in one place:
 # Start the FastAPI server
 ./manage.sh serve --reload
 
-# Fine-tune the ASL letters model
+# Fine-tune the ASL letters model (default dataset)
 ./manage.sh train --epochs 50 --batch-size 16 --device <mps|cpu>
+
+# Fine-tune the ASL words model
+./manage.sh train --dataset words --epochs 50 --batch-size 16 --device <mps|cpu>
 
 # Remove training artifacts (runs directory + generated weights)
 ./manage.sh clean
