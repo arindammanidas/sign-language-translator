@@ -74,7 +74,7 @@ A convenience wrapper keeps the common commands in one place:
 ./manage.sh serve --reload
 
 # Fine-tune the ASL letters model (default dataset)
-./manage.sh train --epochs 50 --batch-size 16 --device <mps|cpu>
+./manage.sh train --dataset letters --epochs 50 --batch-size 16 --device <mps|cpu>
 
 # Fine-tune the ASL words model
 ./manage.sh train --dataset words --epochs 50 --batch-size 16 --device <mps|cpu>
@@ -91,9 +91,23 @@ Pass any additional options after the command and they will be forwarded to uvic
 uvicorn app:app --reload
 ```
 
+or
+
+```bash
+./manage.sh serve --reload
+```
+
 Open `http://localhost:8000` in your browser, allow camera access, and begin signing within the frame. Detected signs appear as captions. Toggle the **Voice captions** button to hear recognised text via your browser's speech synthesis voice.
+
+### Quick CLI test (no Web UI)
+
+If you just want to sanity-check a trained checkpoint with the Ultralytics CLI, you can run it directly on your webcam feed:
+
+```bash
+yolo task=detect mode=predict model=models/asl-words-detector.pt source=0 show=True
+```
+
+Replace `asl-words-detector.pt` with any of your exported weights. This command launches the default YOLO window, runs real-time inference from camera index `0`, and overlays detections without needing the FastAPI/web frontend.
 
 ## Notes & next steps
 - YOLO inference runs in a worker thread to keep the FastAPI event loop responsive. Adjust the frame interval in `static/app.js` if you need faster/slower updates.
-- For production use, consider batching frames, adding authentication, and exposing bounding box overlays back to the client.
-- Extend `sign_language/model.py` to map detected glosses to natural language phrases or trigger downstream actions.
