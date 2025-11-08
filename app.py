@@ -22,7 +22,7 @@ _LOGGER = logging.getLogger("sign-language-translator")
 settings: Settings = get_settings()
 model = YOLOSignLanguageModel(settings)
 
-app = FastAPI(title="ASL Realtime Translator", version="0.1.0")
+app = FastAPI(title="ASL Realtime Translator", version="1.1.0")
 
 static_dir = Path("static")
 if static_dir.exists():

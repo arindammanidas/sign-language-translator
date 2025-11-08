@@ -44,6 +44,8 @@ const LETTER_PRONUNCIATIONS = {
   Z: "zee",
 };
 
+const LETTER_TOKEN_REGEX = /^[A-Z]$/;
+
 const canvas = document.createElement("canvas");
 const context = canvas.getContext("2d", { willReadFrequently: true });
 let websocket;
@@ -60,6 +62,9 @@ const captionTokens = [];
 let noDetectionTimeoutId = null;
 let noDetectionDelayMs = 5000;
 const TAB_TOKEN = " ··· ";
+const MIN_REPEAT_COOLDOWN_MS = 400;
+let repeatCooldownMs = 700;
+let lastCaptionTokenAt = 0;
 
 const formatConfidence = (value) =>
   typeof value === "number" ? `${Math.round(value * 100)}% confidence` : "";
@@ -99,8 +104,7 @@ function handlePrediction(payload) {
 
   const { prediction, confidence } = payload;
   clearNoDetectionSpace();
-  captionTokens.push(prediction);
-  updateCaptionDisplay();
+  appendCaptionToken(prediction);
   confidenceEl.textContent = formatConfidence(confidence);
   drawBoundingBox(payload.bbox ?? null);
   const shouldSpeak = !detectionActive || prediction !== lastPredictionLabel;
@@ -331,6 +335,7 @@ async function loadClientConfig() {
     const payload = await response.json();
     if (typeof payload.frame_interval_ms === "number") {
       frameIntervalMs = Math.max(100, Math.floor(payload.frame_interval_ms));
+      repeatCooldownMs = Math.max(MIN_REPEAT_COOLDOWN_MS, frameIntervalMs);
     }
     if (typeof payload.jpeg_quality === "number") {
       jpegQuality = payload.jpeg_quality;
@@ -356,12 +361,30 @@ function updateCaptionDisplay() {
   }
 }
 
+function appendCaptionToken(token) {
+  if (!token) {
+    return;
+  }
+  const now = Date.now();
+  const lastToken = captionTokens[captionTokens.length - 1];
+  if (lastToken === token && now - lastCaptionTokenAt < repeatCooldownMs) {
+    return;
+  }
+  captionTokens.push(token);
+  lastCaptionTokenAt = now;
+  updateCaptionDisplay();
+}
+
 function scheduleNoDetectionSpace() {
   if (noDetectionTimeoutId !== null) {
     return;
   }
   noDetectionTimeoutId = window.setTimeout(() => {
     if (captionTokens.length !== 0 && captionTokens[captionTokens.length - 1] !== TAB_TOKEN) {
+      const wordFromLetters = getCurrentLetterWord();
+      if (wordFromLetters) {
+        speak(wordFromLetters);
+      }
       captionTokens.push(TAB_TOKEN);
       updateCaptionDisplay();
     }
@@ -383,3 +406,37 @@ function clearNoDetectionSpace() {
   updateStatus("CONNECTING", "info");
   createWebSocket();
 })();
+
+function normaliseLetterToken(token) {
+  if (typeof token !== "string") {
+    return null;
+  }
+  const trimmed = token.trim();
+  if (trimmed.length !== 1) {
+    return null;
+  }
+  const letter = trimmed.toUpperCase();
+  return LETTER_TOKEN_REGEX.test(letter) ? letter : null;
+}
+
+function getCurrentLetterWord() {
+  if (!captionTokens.length) {
+    return "";
+  }
+  const letters = [];
+  for (let index = captionTokens.length - 1; index >= 0; index -= 1) {
+    const token = captionTokens[index];
+    if (token === TAB_TOKEN) {
+      break;
+    }
+    const letter = normaliseLetterToken(token);
+    if (!letter) {
+      return "";
+    }
+    letters.push(letter);
+  }
+  if (letters.length === 0) {
+    return "";
+  }
+  return letters.reverse().join("").toLowerCase();
+}
