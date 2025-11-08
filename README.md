@@ -23,7 +23,7 @@ requirements.txt        # Python dependencies
 
 > **Model weights**
 >
-> Place your trained weights at `models/asl-sign-detector.pt` or set the environment variable `ASL_MODEL_PATH=/path/to/weights.pt`. The repository does not ship a pretrained model.
+> The repo ships with two pretrained checkpoints under `models/`: `asl-sign-detector.v2.e50.pt` (letters) and `asl-words-detector.v2.e10.pt` (words). Point `ASL_MODEL_PATH` to whichever file you want to serve (letters by default), or drop in your own weights at `models/asl-sign-detector.pt` / `.pt` of your choice.
 
 ## Setup
 
@@ -34,16 +34,16 @@ pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-Optionally create a `.env` file to override defaults:
+Optionally create a `.env` file to override defaults (you can copy `example.env` as a starting point):
 
-```env
-ASL_MODEL_PATH=/absolute/path/to/your/asl-weights.pt
-ASL_CONFIDENCE_THRESHOLD=0.4
-ASL_SMOOTHING_WINDOW=7
-ASL_FRAME_INTERVAL_MS=400
-ASL_JPEG_QUALITY=0.4
-ASL_NO_DETECTION_DELAY_MS=5000
-```
+| Variable | Description |
+|----------|-------------|
+| `ASL_MODEL_PATH` | Filesystem path to the YOLO checkpoint the backend loads. Use `models/asl-sign-detector.v2.e50.pt` (letters) or swap in your own `.pt`. |
+| `ASL_CONFIDENCE_THRESHOLD` | Minimum detection confidence (0–1). Raise to cut false positives, lower to recover borderline detections. |
+| `ASL_SMOOTHING_WINDOW` | Number of past predictions used for temporal smoothing; larger windows reduce flicker but add latency. |
+| `ASL_FRAME_INTERVAL_MS` | Delay between frames sent from the browser (ms). Increase for slower machines/bandwidth, decrease for faster updates. |
+| `ASL_JPEG_QUALITY` | Compression quality (0–1) for browser frame uploads; lower = smaller payloads, higher = sharper hands. |
+| `ASL_NO_DETECTION_DELAY_MS` | How long (ms) to wait after the last detection before clearing the caption / inserting a spacer. |
 
 ## Train the ASL model
 
