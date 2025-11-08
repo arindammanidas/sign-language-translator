@@ -59,7 +59,7 @@ cmd_serve() {
 }
 
 cmd_train() {
-  local cmd=("python" "-m" "sign_language.training.asl_letters.trainer")
+  local cmd=("python" "-m" "sign_language.training.asl_letters_v2.trainer")
   if (( $# )); then
     cmd+=("$@")
   fi
@@ -70,7 +70,7 @@ cmd_train() {
 cmd_clean() {
   local runs_dir="${SCRIPT_DIR}/sign_language/training/runs"
   local weights_path="${SCRIPT_DIR}/models/asl-sign-detector.pt"
-  local cache_glob="${SCRIPT_DIR}/sign_language/training/asl_letters"/*/labels.cache
+  local cache_glob="${SCRIPT_DIR}/sign_language/training/asl_letters_v2"/*/labels.cache
 
   echo "This will remove training artifacts:"
   echo "  - ${runs_dir}"

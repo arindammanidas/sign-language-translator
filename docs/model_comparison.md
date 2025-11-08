@@ -9,7 +9,7 @@ The goal is to quantify accuracy, latency, and operational overhead to justify Y
 
 ## Common Setup
 
-- Use the dataset defined in `sign_language/training/asl_letters/data.yaml`. Keep the same train/val/test splits for all models.
+- Use the dataset defined in `sign_language/training/asl_letters_v2/data.yaml`. Keep the same train/val/test splits for all models.
 - Collect the following metrics for each approach:
   - mAP@0.5 (for detectors) or macro F1/accuracy for classifiers.
   - Per-class accuracy / confusion matrix.
@@ -34,7 +34,7 @@ This baseline extracts 21 hand landmarks via MediaPipe and trains a small MLP to
 
 ```bash
 python -m sign_language.training.baselines.mediapipe_classifier \
-  --data sign_language/training/asl_letters/data.yaml \
+  --data sign_language/training/asl_letters_v2/data.yaml \
   --epochs 50 \
   --batch-size 256 \
   --learning-rate 1e-3 \
@@ -56,7 +56,7 @@ This experiment fine-tunes detectors such as Faster R-CNN or RetinaNet using Tor
 
 ```bash
 python -m sign_language.training.baselines.torchvision_detector \
-  --data sign_language/training/asl_letters/data.yaml \
+  --data sign_language/training/asl_letters_v2/data.yaml \
   --model fasterrcnn_mobilenet_v3_large_fpn \
   --epochs 50 \
   --batch-size 8 \
@@ -97,7 +97,7 @@ Generate YOLO metrics in the same JSON format as the baselines:
 ```bash
 python tools/generate_yolo_metrics.py \
   --weights models/asl-sign-detector.pt \
-  --data sign_language/training/asl_letters/data.yaml \
+  --data sign_language/training/asl_letters_v2/data.yaml \
   --split test \
   --device mps
 ```

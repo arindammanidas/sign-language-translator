@@ -306,7 +306,12 @@ def run_pipeline(args: argparse.Namespace) -> None:
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="MediaPipe hands baseline classifier")
-    parser.add_argument("--data", type=Path, default=Path("sign_language/training/asl_letters/data.yaml"), help="Path to data.yaml")
+    parser.add_argument(
+        "--data",
+        type=Path,
+        default=Path("sign_language/training/asl_letters_v2/data.yaml"),
+        help="Path to data.yaml",
+    )
     parser.add_argument("--output", type=Path, default=Path("sign_language/training/runs/mediapipe_baseline"), help="Destination directory for artifacts")
     parser.add_argument("--epochs", type=int, default=40, help="Number of training epochs")
     parser.add_argument("--batch-size", type=int, default=256, help="Training batch size")

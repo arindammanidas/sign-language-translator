@@ -24,7 +24,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--data",
         type=Path,
-        default=Path("sign_language/training/asl_letters/data.yaml"),
+        default=Path("sign_language/training/asl_letters_v2/data.yaml"),
         help="YOLO data.yaml describing the dataset",
     )
     parser.add_argument(

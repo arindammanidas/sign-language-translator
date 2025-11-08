@@ -427,7 +427,12 @@ def run_training(args: argparse.Namespace) -> None:
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="TorchVision detector baseline")
-    parser.add_argument("--data", type=Path, default=Path("sign_language/training/asl_letters/data.yaml"), help="Path to data.yaml")
+    parser.add_argument(
+        "--data",
+        type=Path,
+        default=Path("sign_language/training/asl_letters_v2/data.yaml"),
+        help="Path to data.yaml",
+    )
     parser.add_argument("--output", type=Path, default=Path("sign_language/training/runs/torchvision_detector"), help="Directory for outputs")
     parser.add_argument("--model", type=str, default="fasterrcnn_mobilenet_v3_large_fpn", choices=[
         "fasterrcnn_mobilenet_v3_large_fpn",

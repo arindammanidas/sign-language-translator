@@ -50,10 +50,10 @@ ASL_NO_DETECTION_DELAY_MS=5000
 Fine-tuning weights for the bundled ASL letters dataset can be done directly from this project:
 
 ```bash
-python -m sign_language.training.asl_letters.trainer --epochs 50 --batch-size 16 --device <mps|cpu>
+python -m sign_language.training.asl_letters_v2.trainer --epochs 50 --batch-size 16 --device <mps|cpu>
 ```
 
-The script loads the pretrained checkpoint at `sign_language/models/yolo11n.pt`, trains on the images listed in `sign_language/training/asl_letters/data.yaml`, and copies the best weights to `models/asl-sign-detector.pt`. Adjust flags such as `--device`, `--epochs`, `--image-size`, or `--output` if you wish to customise the run. Ultralytics will store full training artifacts under `sign_language/training/runs/<run-name>/`.
+The script loads the pretrained checkpoint at `sign_language/models/yolo11n.pt`, trains on the images listed in `sign_language/training/asl_letters_v2/data.yaml`, and copies the best weights to `models/asl-sign-detector.pt`. Adjust flags such as `--device`, `--epochs`, `--image-size`, or `--output` if you wish to customise the run. Ultralytics will store full training artifacts under `sign_language/training/runs/<run-name>/`.
 
 ### Baseline benchmarks
 
